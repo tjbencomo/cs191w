@@ -47,14 +47,6 @@ rule cellranger_count:
         mem = cellranger_mem,
         nthreads = cellranger_threads
     shell:
-        # """
-        # cellranger count --id=bob \
-        #     --fastqs=bob \
-        #     --sample=bob \
-        #     --transcriptome=bob \
-        #     --localcores=bob \
-        #     --localmem= bob
-        # """
         """
         cd {params.outdir}
         cellranger count --id={wildcards.patient} \
@@ -62,7 +54,9 @@ rule cellranger_count:
             --sample={params.sample_id} \
             --transcriptome={params.refdir} \
             --localcores={params.nthreads} \
-            --localmem={params.mem}
+            --localmem={params.mem} \
+            --r1-length 28 \
+            --r2-length 91
         """
 
 # rule bam2fastq:
