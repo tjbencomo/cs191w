@@ -1,3 +1,3 @@
 # cs191w
-This repository is for my CS191W project for a single cell transcriptomic analysis of cutaneous cell carcinomas (cSCC)
-with perineural invasion (PNI). 
+This repository contains documentation and code for my CS191W project analyzing cutaneous squamous cell
+carcinomas (cSCC) that present with perineural invasion (PNI) via single cell sequencing.
