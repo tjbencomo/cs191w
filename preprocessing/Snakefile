@@ -1,0 +1,78 @@
+# Rules
+# convert SRA bams to FQs
+# Preprocess using 10X cellranger
+# Merge using Seurat - probably R script
+
+import os
+import pandas as pd
+
+ref_dir = '/home/groups/carilee/refs/scRNAseq/refdata-gex-GRCh38-2020-A'
+fastq_dir = '/scratch/users/tbencomo/cs191w/data/lee'
+# fastq_dir = '/scratch/groups/carilee/pni-data/fqs/'
+output_dir = '/scratch/users/tbencomo/cs191w/preprocessing'
+
+metadata_fp = os.path.join(fastq_dir, 'lee_samples.csv')
+# metadata_fp = os.path.join(fastq_dir, 'test.csv')
+
+
+cellranger_mem = 46
+cellranger_threads = 20
+
+
+patients = pd.read_csv(metadata_fp)
+
+def get_sample_id(wildcards):
+    return patients.set_index('patient').loc[wildcards.patient]['sample_id']
+
+def get_input(wildcards):
+    fqs = os.listdir(os.path.join(fastq_dir, wildcards.patient))
+    fqs = [os.path.join(fastq_dir, wildcards.patient, fq) for fq in fqs if '.fastq.gz' in fq]
+    out = fqs + [ref_dir, fastq_dir]
+    return out
+
+rule targets:
+    input:
+        expand(os.path.join(output_dir, "cellranger", "{patient}"), patient=patients['patient'])
+
+rule cellranger_count:
+    input:
+        get_input
+    output:
+        outdir=directory(os.path.join(output_dir, "cellranger" , "{patient}"))
+    params:
+        outdir = lambda wildcards, output: os.path.dirname(output.outdir),
+        fqdir = lambda wildcards: os.path.join(fastq_dir, wildcards.patient),
+        sample_id = lambda wildcards: get_sample_id(wildcards),
+        refdir = ref_dir,
+        mem = cellranger_mem,
+        nthreads = cellranger_threads
+    shell:
+        # """
+        # cellranger count --id=bob \
+        #     --fastqs=bob \
+        #     --sample=bob \
+        #     --transcriptome=bob \
+        #     --localcores=bob \
+        #     --localmem= bob
+        # """
+        """
+        cd {params.outdir}
+        cellranger count --id={wildcards.patient} \
+            --fastqs={params.fqdir} \
+            --sample={params.sample_id} \
+            --transcriptome={params.refdir} \
+            --localcores={params.nthreads} \
+            --localmem={params.mem}
+        """
+
+# rule bam2fastq:
+#     input:
+#         get_bam
+#     output:
+#         directory(os.path.join(output_dir, "{cohort}", "{sample_id}")
+#     threads: 8
+#     shell:
+#         """
+#         bamtofastq-1.3.2 --nthreads {threads} {input} {output}
+#         """
+
