@@ -34,7 +34,7 @@ p4 <- CreateSeuratObject(
   project = "LEE04"
 )
 
-pni <- merge(p1, y = list(p2, p3, p4), add.cell.ids = patients, project = "PNI-SCC")
+pni <- merge(p1, y = list(p2, p3, p4), project = "PNI-SCC")
 rm(p1, p2, p3, p4)
 batch_info <- c(rep("batch1", sum(pni$orig.ident == "LEE01")), rep("batch2", sum(pni$orig.ident != "LEE01")))
 pni <- AddMetaData(pni, metadata = batch_info, col.name = "batch")

@@ -6,8 +6,6 @@ library(readr)
 
 data_dir <- "data"
 
-patients <- list.files(data_dir)
-
 p1 <- CreateSeuratObject(
   counts = Read10X(data.dir = file.path(data_dir, "LEE01", "filtered_feature_bc_matrix")),
   project = "LEE01"
@@ -59,4 +57,5 @@ top_markers <- pni.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_logF
 
 write_csv(top_markers, "data/markers/cca_markers.csv")
 
-
+## Save Seurat object
+saveRDS(pni.integrated, file = "data/seurat/cca_pni.rds")
