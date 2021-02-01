@@ -63,7 +63,7 @@ rule cellranger_count:
 #     input:
 #         get_bam
 #     output:
-#         directory(os.path.join(output_dir, "{cohort}", "{sample_id}")
+#         directory(os.path.join(output_dir, "ji", "fqs","{sample_id}")
 #     threads: 8
 #     shell:
 #         """
