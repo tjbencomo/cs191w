@@ -34,6 +34,8 @@ rule targets:
     input:
         expand(os.path.join(output_dir, "cellranger", "{patient}"), patient=patients['patient'])
 
+## Should i have the trimming flags - probably turn off due to Andrew's data
+### using v2 chemistry
 rule cellranger_count:
     input:
         get_input
@@ -47,14 +49,6 @@ rule cellranger_count:
         mem = cellranger_mem,
         nthreads = cellranger_threads
     shell:
-        # """
-        # cellranger count --id=bob \
-        #     --fastqs=bob \
-        #     --sample=bob \
-        #     --transcriptome=bob \
-        #     --localcores=bob \
-        #     --localmem= bob
-        # """
         """
         cd {params.outdir}
         cellranger count --id={wildcards.patient} \
