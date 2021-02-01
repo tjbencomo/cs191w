@@ -4,7 +4,8 @@ library(patchwork)
 library(ggplot2)
 
 data_dir <- "data"
-fp <- file.path(data_dir, "seurat", "harmony_pni.rds")
+# fp <- file.path(data_dir, "seurat", "harmony_pni.rds")
+fp <- file.path(data_dir, "seurat", "cca_pni.rds")
 pni <- readRDS(fp)
 pni <- AddMetaData(pni, Idents(pni), col.name = "broad_cluster")
 
@@ -32,6 +33,7 @@ counts_plot <- celltype_counts %>%
   geom_col() +
   labs(x = "", y = "Number of cells") +
   theme_bw() +
+  theme(axis.text.y = element_blank()) +
   coord_flip()
 # print(counts_plot)
 
