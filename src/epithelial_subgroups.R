@@ -1,10 +1,8 @@
 # File: epithelial_subgroups.R
 # Description: Isolate epithelial cells and identify
-# subpopulations. Based on Andrew Ji's paper, we are
-# looking for 3 main cell types: 1) pilosebaceous (hair/sebum)
-# cells, 2) eccrine (sweat glands) 3) keratinocytes. After
-# identification the goal is to remove all non-keratinocytes
-# so we can perform KC specific analyses.
+# subpopulations. We are looking for keratinocytes and
+# eccrine (sweat gland) or pilosebaceous (hair/sebum) cells.
+# We remove non-KCs for further KC analysis at the end.
 
 library(Seurat)
 library(dplyr)
