@@ -4,15 +4,7 @@ library(dplyr)
 library(ggplot2)
 library(readr)
 library(stringr)
-library(glmGamPoi)
-library(future)
-
-options(future.globals.maxSize = 16000 * 1024^2)
-
-plan("multiprocess", workers = 2)
-print(plan())
-
-
+library(harmony)
 
 data_dir <- file.path("data", "ji")
 data_dir <- "/scratch/users/tbencomo/cs191w/cellranger/ji"
@@ -54,7 +46,7 @@ print(samples)
 # ji <- merge(sample_list[[1]], y = sample_list[2:length(sample_list)], merge.data = TRUE)
 # rm(sample_list, s1, s2, s)
 
-print("Finished merging replicated samples")
+# print("Finished merging replicated samples")
 # print("Moving on to remaining Ji samples...")
 
 
@@ -73,7 +65,7 @@ for (i in 1:length(samples)) {
     s <- subset(s, nFeature_RNA > 200 & percent.mt < 10)
     # s <- NormalizeData(s)
     # s <- FindVariableFeatures(s, selection.method = "vst", nfeatures = 2000)
-    s <- SCTransform(s, vars.to.regress = "percent.mt", method = "glmGamPoi", verbose=F)
+    # s <- SCTransform(s, vars.to.regress = "percent.mt", method = "glmGamPoi")
     if (str_detect(s@project.name, "normal")) {
       s <- AddMetaData(s, "normal", col.name = "condition")
     } else {
@@ -85,7 +77,7 @@ for (i in 1:length(samples)) {
   # }
 }
 
-# ji <- merge(sample_list[[1]], y = sample_list[2:length(sample_list)], merge.data = TRUE)
+ji <- merge(sample_list[[1]], y = sample_list[2:length(sample_list)], merge.data = TRUE)
 # ji <- ji %>%
 #     Normalize() %>%
 #     FindVariableFeatures(selection.method = "vst", nfeatures = 2000) %>%
@@ -105,41 +97,37 @@ for (i in 1:length(pni_samples)) {
     p <- AddMetaData(p, "pni", col.name = "condition")
     p[["percent.mt"]] <- PercentageFeatureSet(p, pattern = "^MT-")
     p <- subset(p, nFeature_RNA > 200 & percent.mt < 20)
-    p <- SCTransform(p, vars.to.regress = "percent.mt", method = "glmGamPoi", verbose=F)
+    # p <- SCTransform(p, vars.to.regress = "percent.mt", method = "glmGamPoi")
     pni_list[[i]] <- p
 }
 
-tumors.list <- c(sample_list, pni_list)
-rm(sample_list, pni_list)
+## Final Merge and Save
+cells <- merge(ji, y = pni_list, merge.data = TRUE)
+cells <- cells %>%
+    NormalizeData() %>%
+    FindVariableFeatures(selection.method = "vst", nfeatures = 2000) %>%
+    ScaleData(vars.to.regress = "percent.mt") %>%
+    RunPCA(npcs = 30)
 
-features <- SelectIntegrationFeatures(object.list = tumors.list, nfeatures = 5000)
-tumors.list <- PrepSCTIntegration(object.list = tumors.list, anchor.features = features)
+cells <- RunHarmony(cells, "condition", max.iter.harmony = 30) %>%
+    RunUMAP(reduction = "harmony", dims = 1:30) %>%
+    FindNeighbors(reduction = "harmony") %>%
+    FindClusters(resolution = .2)
 
-tumors.anchors <- FindIntegrationAnchors(
-    object.list = tumors.list, 
-    normalization.method = "SCT",
-    anchor.features = features
-)
-tumors.combined.sct <- IntegrateData(anchorset = tumors.anchors, normalization.method = "SCT")
-tumors.combined.sct <- tumors.combined.sct %>%
-    RunPCA() %>%
-    RunUMAP(reduction = "pca", dims = 1:50) %>%
-    FindNeighbors() %>%
-    FindClusters(resolution = .15)
-
-markers = FindAllMarkers(tumors.combined.sct, only.pos = T, min.pct = .25, logfc.threshold = .5)
+markers <- FindAllMarkers(cells, only.pos = T, min.pct = .25, logfc.threshold = .5)
 top_markers <- markers %>%
     filter(p_val_adj < .05) %>%
     group_by(cluster) %>%
-    slice_max(avg_log2FC, n = 10) %>%
-    ungroup()
+    slice_max(avg_log2FC, n = 10)
 
-print(tumors.combined.sct)
-print(table(tumors.combined.sct$orig.ident))
+print(cells)
+print(table(cells$orig.ident))
 
-outdir <- file.path("data", "seurat")
-outfp <- file.path(outdir, "cca_combined.rds")
-saveRDS(tumors.combined.sct, file = outfp)
+outdir = file.path("data", "seurat")
+outfp <- file.path(outdir, "harmony_combined.rds")
 
-write_csv(markers, file.path(outdir, "all_cca_markers.csv"))
-write_csv(top_markers, file.path(outdir, "top_cca_markers.csv"))
+saveRDS(cells, file = outfp)
+
+write_csv(markers, file.path(outdir, "all_harmony_markers.csv"))
+write_csv(top_markers, file.path(outdir, "top_harmony_markers.csv"))
+
