@@ -24,10 +24,12 @@ for (i in 1:length(multiple_reps)) {
   s1_fp <- file.path(data_dir, s1name, "outs", "filtered_feature_bc_matrix")
   s2_fp <- file.path(data_dir, s2name, "outs", "filtered_feature_bc_matrix")
   s1 <- CreateSeuratObject(
-    counts = Read10X(data.dir = s1_fp)
+    counts = Read10X(data.dir = s1_fp),
+    project = multiple_reps[i]
   )
   s2 <- CreateSeuratObject(
-    counts = Read10X(data.dir = s2_fp)
+    counts = Read10X(data.dir = s2_fp),
+    project = multiple_reps[i]
   )
   # print(s1)
   # print(s2)
@@ -41,6 +43,7 @@ for (i in 1:length(multiple_reps)) {
   }
   rep_sample_list[[i]] <- s
   print(s@project.name)
+  print(table(s$orig.ident))
   print(s)
 }
 
@@ -80,9 +83,8 @@ print("Merging sample lists")
 # print(sample_list)
 sample_list <- c(sample_list, rep_sample_list)
 rm(rep_sample_list)
-# ji <- merge(sample_list[[1]], y = sample_list[2:3])
 ji <- merge(sample_list[[1]], y = sample_list[2:length(sample_list)])
-# ji <- merge(sample_list[[1]], y = sample_list[2:length(sample_list)], merge.data = TRUE)
+
 
 print("Finished loading and merging Ji samples")
 print("Loading and merging PNI samples")
@@ -104,6 +106,7 @@ for (i in 1:length(pni_samples)) {
 
 ## Final Merge and Save
 cells <- merge(ji, y = pni_list)
+print(table(cells$orig.ident))
 
 saveRDS(cells, "data/seurat/combined_raw.rds")
 print("Saved Seurat object")
