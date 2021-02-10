@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH --time=2:00:00
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=64000
+#SBATCH --mem=32000
 #SBATCH --mail-type=END
 #SBATCH --mail-user=tbencomo@stanford.edu
 

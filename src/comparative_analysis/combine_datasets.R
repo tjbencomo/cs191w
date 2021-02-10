@@ -100,7 +100,7 @@ for (i in 1:length(pni_samples)) {
     p <- CreateSeuratObject(counts = Read10X(data.dir = fp), project = sname)
     p <- AddMetaData(p, "pni", col.name = "condition")
     p[["percent.mt"]] <- PercentageFeatureSet(p, pattern = "^MT-")
-    p <- subset(p, nFeature_RNA > 200 & percent.mt < 20)
+    p <- subset(p, nFeature_RNA > 200 & percent.mt < 10)
     pni_list[[i]] <- p
 }
 

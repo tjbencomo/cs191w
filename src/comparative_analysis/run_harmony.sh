@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=run_harmony
-#SBATCH --output=/scratch/users/tbencomo/logs/run_noint.out
+#SBATCH --output=/scratch/users/tbencomo/logs/run_harmony.out
 #SBATCH --nodes=1
 #SBATCH --time=2:00:00
-#SBATCH --cpus-per-task=1
-#SBATCH --mem=32000
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=20000
 #SBATCH --mail-type=END
 #SBATCH --mail-user=tbencomo@stanford.edu
 
