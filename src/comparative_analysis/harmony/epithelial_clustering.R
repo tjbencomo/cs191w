@@ -9,7 +9,73 @@ library(harmony)
 library(dplyr)
 library(ggplot2)
 library(readr)
+library(stringr)
+library(ggrepel)
 
+##############################################
+## Helper Functions
+##############################################
+
+run_fgsea <- function(gene_ranking) {
+  require(fgsea)
+  reactome <- gmtPathways(file.path("data", "genesets", "c2.cp.reactome.v7.2.symbols.gmt"))
+  hallmark <- gmtPathways(file.path("data", "genesets", "h.all.v7.2.symbols.gmt"))
+  kegg <- gmtPathways(file.path("data", "genesets", "c2.cp.kegg.v7.2.symbols.gmt"))
+  gobp <- gmtPathways(file.path("data", "genesets", "c5.go.bp.v7.2.symbols.gmt"))
+  gomf <- gmtPathways(file.path("data", "genesets", "c5.go.mf.v7.2.symbols.gmt"))
+  
+  react_res <- fgsea(reactome, gene_ranking, eps = 0) %>%
+    filter(padj < .05)
+  hallmark_res <- fgsea(hallmark, gene_ranking, eps = 0) %>%
+    filter(padj < .05)
+  kegg_res <- fgsea(kegg, gene_ranking, eps = 0) %>%
+    filter(padj < .05)
+  gobp_res <- fgsea(gobp, gene_ranking, eps = 0) %>%
+    filter(padj < .05)
+  gomf_res <- fgsea(gomf, gene_ranking, eps = 0) %>%
+    filter(padj < .05)
+  
+  eres <- rbind(react_res, hallmark_res, kegg_res, gobp_res, gomf_res)
+}
+
+plotES <- function(es_res, db_fil = NULL, n_terms = 5) {
+  s <- str_split(es_res$pathway, "_")
+  db <- sapply(s, function(x) x[1])
+  p <- sapply(s, function(x) str_c(x[1:length(x)], collapse =" "))
+  es_res$db <- db
+  es_res <- es_res %>%
+    mutate(direction = ifelse(NES > 0, "Upregulated", "Downregulated")) %>%
+    mutate(direction = factor(direction, levels = c("Upregulated", "Downregulated"))) %>%
+    mutate(pathway = p)
+  
+  if (!is.null(db_fil)) {
+    if (length(db_fil) > 1) {
+      es_res <- es_res %>%
+        filter(db %in% db_fil)
+    } else {
+      es_res <- es_res %>%
+        filter(db == db_fil)
+    }
+  }
+  
+  es_res %>%
+    group_by(direction) %>%
+    slice_max(abs(NES), n = n_terms) %>%
+    ungroup() %>%
+    ggplot(aes(-log10(padj), reorder(pathway, -log10(padj)))) +
+    geom_col(aes(fill = -log10(padj))) +
+    scale_y_discrete(labels = function(x) str_wrap(x, width = 20)) +
+    facet_wrap(~direction, ncol = 1, scales = "free") +
+    theme(axis.text.y = element_text(size = 10)) +
+    labs(x = "-log10(Adjusted P-Value)", y = "")
+}
+
+
+##############################################
+## Analysis Code
+##############################################
+
+save_kcs <- FALSE
 data_dir <- "data"
 fp <- file.path(data_dir, "seurat", "harmony", "harmony_combined.rds")
 cells <- readRDS(fp)
@@ -46,11 +112,13 @@ top_markers <- epi.markers %>%
  
 ## We can now exclude pilosebaceous/eccrine clusters and proceed
 ## with KC analysis
-non_kc_clusters <- c(1, 8, 15, 17)
+non_kc_clusters <- c(15, 17)
 kcs <- subset(epi, idents = non_kc_clusters, invert = T)
 kc_outfp <- file.path(data_dir, "seurat", "harmony", "keratinocytes.rds")
-saveRDS(kcs, kc_outfp)
-
+if (save_kcs) {
+  saveRDS(kcs, kc_outfp)
+}
+rm(epi)
 pni <- subset(kcs, condition == "pni")
 nonpni <- subset(kcs, condition == "cSCC")
 
@@ -68,25 +136,11 @@ pni <- pni %>%
   RunHarmony("orig.ident", max.iter.harmony = 30) %>%
   RunUMAP(reduction = "harmony", dims = 1:20) %>%
   FindNeighbors(reduction = "harmony")
-pni <- FindClusters(pni, resolution = .5)
+pni <- FindClusters(pni, resolution = .35)
 
 pni_umap <- DimPlot(pni, reduction = "umap", label = T, label.size = 8)
-pni_samples <- DimPlot(pni, reduction = "umap", group.by = "orig.ident")
-pni_plots <- pni_umap + pni_samples
-
-nonpni <- nonpni %>%
-  RunPCA(npc = 20) %>%
-  RunHarmony("orig.ident", max.iter.harmony = 30) %>%
-  RunUMAP(reduction = "harmony", dims = 1:20) %>%
-  FindNeighbors(reduction = "harmony")
-nonpni <- FindClusters(nonpni, resolution = .25)
-
-nonpni_umap <- DimPlot(nonpni, reduction = "umap", label = T)
-nonpni_samples <- DimPlot(nonpni, reduction = "umap", group.by = "orig.ident")
-nonpni_plots <- nonpni_umap + nonpni_samples
-
-
-(pni_umap + pni_samples) / (nonpni_umap + nonpni_samples)
+print(pni_umap)
+# pni_samples <- DimPlot(pni, reduction = "umap", group.by = "orig.ident")
 
 pni_markers <- FindAllMarkers(pni, only.pos = TRUE, min.pct = 0.25, logfc.threshold = .5) %>%
   filter(p_val_adj < .05)
@@ -95,6 +149,32 @@ top_pni_markers <- pni_markers %>%
   slice_max(avg_log2FC, n = 15) %>%
   ungroup()
 
+pni_cluster_labels <- c(
+  "Basal",
+  "Differentiating",
+  "Cycling",
+  "Unknown-1",
+  "TSK",
+  "Unknown-2",
+  "Differentiating"
+)
+
+
+names(pni_cluster_labels) <- levels(pni)
+pni <- RenameIdents(pni, pni_cluster_labels)
+
+nonpni <- nonpni %>%
+  RunPCA(npc = 20) %>%
+  RunHarmony("orig.ident", max.iter.harmony = 30) %>%
+  RunUMAP(reduction = "harmony", dims = 1:20) %>%
+  FindNeighbors(reduction = "harmony")
+nonpni <- FindClusters(nonpni, resolution = .25)
+
+nonpni_umap <- DimPlot(nonpni, reduction = "umap", label = T, label.size = 8)
+nonpni_samples <- DimPlot(nonpni, reduction = "umap", group.by = "orig.ident")
+nonpni_plots <- nonpni_umap + nonpni_samples
+
+
 nonpni_markers <- FindAllMarkers(nonpni, only.pos = TRUE, min.pct = 0.25, logfc.threshold = .5) %>%
   filter(p_val_adj < .05)
 top_nonpni_markers <- nonpni_markers %>%
@@ -102,78 +182,180 @@ top_nonpni_markers <- nonpni_markers %>%
   slice_max(avg_log2FC, n = 15) %>%
   ungroup()
 
+nonpni_cluster_labels <- c(
+  "Differentiating",
+  "Basal",
+  "Cycling",
+  "Differentiating",
+  "Cycling",
+  "TSK",
+  "Unknown-3"
+)
 
-check_enrichr <- function(genes) {
-  require(enrichR)
-  setEnrichrSite("Enrichr")
-  dbs <- c("MSigDB_Hallmark_2020", "MSigDB_Oncogenic_Signatures", 
-           "KEGG_2019_Human", "Reactome_2016", "GO_Molecular_Function_2018", 
-           "GO_Biological_Process_2018")
-  websiteLive <- TRUE
-  if (is.null(dbs)) websiteLive <- FALSE
-  if (websiteLive) {
-    enriched <- enrichr(genes, dbs)
-    bind_rows(enriched, .id = "db")
-  } else {
-    print("enrichR website not live!")
-    stop()
-  }
-}
+names(nonpni_cluster_labels) <- levels(nonpni)
+nonpni <- RenameIdents(nonpni, nonpni_cluster_labels)
 
-cluster1_res <- check_enrichr(pni_markers %>% filter(cluster == 1) %>% pull(gene))
-cluster6_res <- check_enrichr(pni_markers %>% filter(cluster == 6) %>% pull(gene))
-cluster2_res <- check_enrichr(pni_markers %>% filter(cluster == 2) %>% pull(gene))
-cscc_basal_res <- check_enrichr(nonpni_markers %>% filter(cluster == 1) %>% pull(gene))
+## Redraw with cluster labels
+pni_umap <- DimPlot(pni, reduction = "umap", label = T, label.size = 8)
+nonpni_umap <- DimPlot(nonpni, reduction = "umap", label = T, label.size = 8)
 
-# kcs <- kcs %>%
-#   RunPCA(npcs = 20) %>%
-#   RunHarmony("condition", max.iter.harmony = 30) %>%
-#   FindNeighbors(reduction = "harmony") %>%
-#   FindClusters(resolution = .25) %>%
-#   RunUMAP(reduction = "harmony", dims = 1:20)
-# DimPlot(kcs, reduction = "umap", label = T)
-# DimPlot(kcs, reduction = "umap", group.by = "condition")
-# DimPlot(kcs, reduction = "umap", group.by = "orig.ident")
-# # rm(epi)
-# 
-# kc.markers <- FindAllMarkers(kcs, only.pos = TRUE, min.pct = 0.25, logfc.threshold = .5)
-# kc.markers <- kc.markers %>%
-#   filter(p_val_adj < .05)
-# top_markers <- kc.markers %>%
-#   group_by(cluster) %>%
-#   slice_max(avg_log2FC, n = 15) %>%
-#   ungroup()
+(pni_umap + ggtitle("PNI Keratinocytes")) / (nonpni_umap + ggtitle("Non-PNI Keratinoctyes"))
+
+## Re-merge cells now that we have labeled the clusters separately
+kcs <- merge(nonpni, y = pni, merge.data = T)
 
 
-# tsks <- subset(kcs, idents = 6)
-# Idents(tsks) <- "condition"
-# 
-# avg.tsk.cells <- as.data.frame(log1p(AverageExpression(tsks, verbose = FALSE)$RNA))
-# avg.tsk.cells$gene <- rownames(avg.tsk.cells)
-# avg.tsk.cells$diff <- avg.tsk.cells$pni - avg.tsk.cells$cSCC
-# 
-# 
-# degs <- FindMarkers(
-#   tsks, 
-#   ident.1 = "pni", 
-#   ident.2 = "cSCC", 
-#   verbose = TRUE, 
-#   group.by="condition",
-#   latent.vars = c("orig.ident", "percent.mt"),
-#   test.use = "MAST"
-#   ) %>%
-#   tibble::rownames_to_column(var = "gene") %>%
-#   filter(p_val_adj < .01) %>%
-#   arrange(desc(abs(avg_log2FC)))
-# 
-# genes_to_label <- head(degs$gene, n=20)
-# deg.plot <- avg.tsk.cells %>%
-#   ggplot(aes(cSCC, pni)) +
-#   geom_point() +
-#   theme_bw() +
-#   labs("cSCCs WITHOUT PNI", "cSCCs with PNI")
-# deg.plot <- LabelPoints(plot = deg.plot, points = genes_to_label, repel = TRUE)
-# deg.plot
+u1.markers <- FindMarkers(pni, ident.1 = "Unknown-1", logfc.threshold = .25) %>% 
+  tibble::rownames_to_column(var = "gene") %>%
+  filter(p_val_adj < .05) %>%
+  arrange(avg_log2FC )
+u2.markers <- FindMarkers(pni, ident.1 = "Unknown-2", logfc.threshold = .25) %>% 
+  tibble::rownames_to_column(var = "gene") %>%
+  filter(p_val_adj < .05) %>%
+  arrange(avg_log2FC)
+u3.markers <- FindMarkers(nonpni, ident.1 = "Unknown-3", logfc.threshold = .25) %>% 
+  tibble::rownames_to_column(var = "gene") %>%
+  filter(p_val_adj < .05) %>%
+  arrange(avg_log2FC)
 
 
+u1_ranks <- u1.markers$avg_log2FC
+names(u1_ranks) <- u1.markers$gene
+u1_es <- run_fgsea(u1_ranks)
 
+u2_ranks <- u2.markers$avg_log2FC
+names(u2_ranks) <- u2.markers$gene
+u2_es <- run_fgsea(u2_ranks)
+
+u3_ranks <- u3.markers$avg_log2FC
+names(u3_ranks) <- u3.markers$gene
+u3_es <- run_fgsea(u3_ranks)
+
+u1_esplot <- plotES(u1_es, n_terms = 6)
+print(u1_esplot)
+u2_esplot <- plotES(u2_es, n_terms = 6)
+print(u2_esplot)
+u3_esplot <- plotES(u3_es, n_terms = 6)
+print(u3_esplot)
+
+
+basal_de <- FindMarkers(
+  kcs, ident.1 = "pni", 
+  ident.2 = "cSCC",
+  subset.ident = "Basal",
+  group.by = "condition", 
+  logfc.threshold = .25) %>%
+  tibble::rownames_to_column(var = "gene") %>%
+  mutate(subgroup = "Basal")
+
+cycling_de <- FindMarkers(
+  kcs, ident.1 = "pni", 
+  ident.2 = "cSCC",
+  subset.ident = "Cycling",
+  group.by = "condition", 
+  logfc.threshold = .25) %>%
+  tibble::rownames_to_column(var = "gene") %>%
+  mutate(subgroup = "Cycling")
+
+diff_de <- FindMarkers(
+  kcs, ident.1 = "pni", 
+  ident.2 = "cSCC",
+  subset.ident = "Differentiating",
+  group.by = "condition", 
+  logfc.threshold = .25) %>%
+  tibble::rownames_to_column(var = "gene") %>%
+  mutate(subgroup = "Differentiating")
+
+tsk_de <- FindMarkers(
+  kcs, ident.1 = "pni", 
+  ident.2 = "cSCC",
+  subset.ident = "TSK",
+  group.by = "condition", 
+  logfc.threshold = .25) %>%
+  tibble::rownames_to_column(var = "gene") %>%
+  mutate(subgroup = "TSK")
+
+
+library(UpSetR)
+de_upset <- upset(fromList(list(
+  Basal = basal_de %>% filter(p_val_adj < .05) %>% pull(gene),
+  Cycling = cycling_de %>% filter(p_val_adj < .05) %>% pull(gene),
+  Differentiating = diff_de %>% filter(p_val_adj < .05) %>% pull(gene),
+  TSK = tsk_de %>% filter(p_val_adj < .05) %>% pull(gene)
+)), text.scale = 2, order.by = "freq")
+print(de_upset)
+
+de_plot <- bind_rows(basal_de, cycling_de, diff_de, tsk_de) %>%
+  mutate(logp = -log10(p_val_adj)) %>%
+  mutate(sig = ifelse(p_val_adj < .05, "padj < .05", "ns")) %>%
+  ggplot(aes(avg_log2FC, logp)) +
+  geom_point(aes(color = sig)) +
+  facet_wrap(~subgroup, scales = "free")
+print(de_plot)
+
+basal_ranks <- basal_de %>%
+  arrange(avg_log2FC) %>%
+  pull(avg_log2FC)
+names(basal_ranks) <- basal_de %>%
+  arrange(avg_log2FC) %>%
+  pull(gene)
+basal_es <- run_fgsea(basal_ranks)
+basal_esplot <- plotES(basal_es, n_terms = 4)
+basal_de %>%
+  mutate(logp = -log10(p_val_adj)) %>%
+  mutate(sig = ifelse(p_val_adj < .05, "padj < .05", "ns")) %>%
+  mutate(lbl = ifelse(abs(avg_log2FC) > 2, gene, "")) %>%
+  ggplot(aes(avg_log2FC, logp, label = lbl)) +
+  geom_point(aes(color = sig)) +
+  geom_label_repel()
+
+cycling_ranks <- cycling_de %>%
+  arrange(avg_log2FC) %>%
+  pull(avg_log2FC)
+names(cycling_ranks) <- cycling_de %>%
+  arrange(avg_log2FC) %>%
+  pull(gene)
+cycling_es <- run_fgsea(cycling_ranks)
+cycling_esplot <- plotES(cycling_es, n_terms = 4)
+cycling_de %>%
+  mutate(logp = -log10(p_val_adj)) %>%
+  mutate(sig = ifelse(p_val_adj < .05, "padj < .05", "ns")) %>%
+  mutate(lbl = ifelse(abs(avg_log2FC) > 2, gene, "")) %>%
+  ggplot(aes(avg_log2FC, logp, label = lbl)) +
+  geom_point(aes(color = sig)) +
+  geom_label_repel()
+
+
+diff_ranks <- diff_de %>%
+  arrange(avg_log2FC) %>%
+  pull(avg_log2FC)
+names(diff_ranks) <- diff_de %>%
+  arrange(avg_log2FC) %>%
+  pull(gene)
+diff_es <- run_fgsea(diff_ranks)
+
+diff_esplot <- plotES(diff_es, n_terms = 4)
+diff_de %>%
+  mutate(logp = -log10(p_val_adj)) %>%
+  mutate(sig = ifelse(p_val_adj < .05, "padj < .05", "ns")) %>%
+  mutate(lbl = ifelse(abs(avg_log2FC) > 3, gene, "")) %>%
+  ggplot(aes(avg_log2FC, logp, label = lbl)) +
+  geom_point(aes(color = sig)) +
+  geom_label_repel()
+
+
+tsk_ranks <- tsk_de %>%
+  arrange(avg_log2FC) %>%
+  pull(avg_log2FC)
+names(tsk_ranks) <- tsk_de %>%
+  arrange(avg_log2FC) %>%
+  pull(gene)
+tsk_es <- run_fgsea(tsk_ranks)
+tsk_esplot <- plotES(tsk_es, n_terms = 6)
+tsk_de %>%
+  mutate(logp = -log10(p_val_adj)) %>%
+  mutate(sig = ifelse(p_val_adj < .05, "padj < .05", "ns")) %>%
+  mutate(lbl = ifelse(abs(avg_log2FC) > 2, gene, "")) %>%
+  ggplot(aes(avg_log2FC, logp, label = lbl)) +
+  geom_point(aes(color = sig)) +
+  geom_label_repel()
