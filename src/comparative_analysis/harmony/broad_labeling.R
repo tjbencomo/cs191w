@@ -44,7 +44,7 @@ cluster_labels <- c(
   "Myeloid cells",
   "Melanocytes",
   "Epithelial cells",
-  "Fiborblasts",
+  "Fibroblasts",
   "T cells/NK cells",
   "Mast cells"
 )
