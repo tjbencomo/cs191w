@@ -114,10 +114,7 @@ top_markers <- epi.markers %>%
 ## with KC analysis
 non_kc_clusters <- c(15, 17)
 kcs <- subset(epi, idents = non_kc_clusters, invert = T)
-kc_outfp <- file.path(data_dir, "seurat", "harmony", "keratinocytes.rds")
-if (save_kcs) {
-  saveRDS(kcs, kc_outfp)
-}
+
 rm(epi)
 pni <- subset(kcs, condition == "pni")
 nonpni <- subset(kcs, condition == "cSCC")
@@ -149,6 +146,8 @@ top_pni_markers <- pni_markers %>%
   slice_max(avg_log2FC, n = 15) %>%
   ungroup()
 
+
+## Cluster 3 is Unknown-1 and Cluster 5 is Unknown-2
 pni_cluster_labels <- c(
   "Basal",
   "Differentiating",
@@ -158,6 +157,14 @@ pni_cluster_labels <- c(
   "Unknown-2",
   "Differentiating"
 )
+
+pni_cluster2id <- tibble(
+  cluster = factor(0:(length(pni_cluster_labels)-1)),
+  label = pni_cluster_labels
+)
+
+pni_markers <- pni_markers %>%
+  left_join(pni_cluster2id)
 
 
 names(pni_cluster_labels) <- levels(pni)
@@ -182,6 +189,7 @@ top_nonpni_markers <- nonpni_markers %>%
   slice_max(avg_log2FC, n = 15) %>%
   ungroup()
 
+## Cluster 6 is the unknown non-PNI KC cluster
 nonpni_cluster_labels <- c(
   "Differentiating",
   "Basal",
@@ -191,6 +199,14 @@ nonpni_cluster_labels <- c(
   "TSK",
   "Unknown-3"
 )
+
+nonpni_cluster2id <- tibble(
+  cluster = factor(0:(length(nonpni_cluster_labels)-1)),
+  label = nonpni_cluster_labels
+)
+
+nonpni_markers <- nonpni_markers %>%
+  left_join(nonpni_cluster2id)
 
 names(nonpni_cluster_labels) <- levels(nonpni)
 nonpni <- RenameIdents(nonpni, nonpni_cluster_labels)
@@ -359,3 +375,21 @@ tsk_de %>%
   ggplot(aes(avg_log2FC, logp, label = lbl)) +
   geom_point(aes(color = sig)) +
   geom_label_repel()
+
+## Save keratinocyte object for future use
+
+kc_outfp <- file.path(data_dir, "seurat", "harmony", "keratinocytes.rds")
+if (save_kcs) {
+  saveRDS(kcs, kc_outfp)
+}
+
+## Save markers genes for later viewing
+write_csv(pni_markers, "data/seurat/harmony/pni_markers.csv")
+write_csv(nonpni_markers, "data/seurat/harmony/nonpni_markers.csv")
+
+## Save DE gene lists
+write_csv(basal_de, "data/seurat/harmony/basal_de_res.csv")
+write_csv(cycling_de, "data/seurat/harmony/cycling_de_res.csv")
+write_csv(diff_de, "data/seurat/harmony/diff_de_res.csv")
+write_csv(tsk_de, "data/seurat/harmony/tsk_de_res.csv")
+
