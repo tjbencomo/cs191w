@@ -6,6 +6,7 @@
 library(Seurat)
 library(readr)
 library(dplyr)
+library(tibble)
 
 cells_fp <- file.path("data", "seurat", "harmony", "harmony_combined.rds")
 metadata_fp <- file.path("data", "combined_cell_metadata.csv")
@@ -25,27 +26,35 @@ ji_metadata <- metadata %>%
   filter(condition == "cSCC", isMultiplet == 0)
 pni_metadata <- metadata %>% 
   filter(condition == "pni", isMultiplet == 0)
+rm(metadata)
 
 print("Checking that cell IDs match metadata order...")
 stopifnot(all(ji_metadata$cell_id == rownames(ji@meta.data)))
 stopifnot(all(pni_metadata$cell_id == rownames(pni@meta.data)))
 print("CellID check passed!")
 
+print("Writing inputs for PNI cohort")
+pni_counts <- pni@assays$RNA@data %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "Gene")
+pni_celltypes <- pni_metadata %>%
+  select(cell_id, celltype_level3)
+write_csv(pni_counts, 'data/cpdb/pni_counts.csv')
+write_csv(pni_celltypes, 'data/cpdb/pni_meta.csv')
+rm(pni_counts)
+rm(pni_celltypes)
+rm(pni)
+
 print("Writing inputs for Ji cohort...")
-ji_counts <- ji@assays$RNA@data %>%
-  as_tibble() %>% 
+mat <- ji@assays$RNA@data
+rm(ji)
+ji_counts <- mat %>%
+  as.data.frame() %>%
   rownames_to_column(var = "Gene")
 ji_celltypes <- ji_metadata %>%
   select(cell_id, celltype_level3)
 write_csv(ji_counts, 'data/cpdb/ji_counts.txt')
 write_tsv(ji_celltypes, 'data/cpdb/ji_meta.txt')
 
-print("Writing inputs for PNI cohort")
-pni_counts <- pni@assays$RNA@data %>%
-  as_tibble() %>% 
-  rownames_to_column(var = "Gene")
-pni_celltypes <- pni_metadata %>%
-  select(cell_id, celltype_level3)
-write_csv(pni_counts, 'data/cpdb/pni_counts.csv')
-write_csv(pni_celltypes, 'data/cpdb/pni_meta.csv')
+
 

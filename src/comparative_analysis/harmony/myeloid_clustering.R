@@ -57,7 +57,7 @@ top_markers <- markers %>%
   ungroup()
   
 ## Comaring to SingleR predictions - most of them are predicted
-## B cells???? They shouldnt be in that cluster?
+## B cells???? They shouldnt be in this group?
 ## Don't use these results
 immune_ref <- ImmGenData()
 preds <- SingleR(test = as.SingleCellExperiment(myeloid), ref = immune_ref, assay.type.test=1,
@@ -69,9 +69,9 @@ cluster_labels <- c(
   "Macrophages",
   "Langerhans cells",
   "CD1C DCs",
-  "MSDCs",
+  "MDSCs",
   "Macrophages",
-  "MSDCs",
+  "MDSCs",
   "Unknown",
   "Migrating",
   "Lymphoid like",
