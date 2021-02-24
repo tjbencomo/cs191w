@@ -1,3 +1,8 @@
+# File: harmony_integration.R
+# Description: Integrate PNI samples to remove patient specific batch
+# effect. Identify broad cell types and find markers. Save annotated seurat
+# object and marker gene files.
+
 library(Seurat)
 library(harmony)
 library(ggplot2)
