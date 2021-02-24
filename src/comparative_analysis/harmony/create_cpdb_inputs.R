@@ -38,7 +38,7 @@ pni_counts <- pni@assays$RNA@data %>%
   as.data.frame() %>%
   rownames_to_column(var = "Gene")
 pni_celltypes <- pni_metadata %>%
-  select(cell_id, celltype_level3)
+  select(cell_id, celltype_level2)
 write_csv(pni_counts, 'data/cpdb/pni_counts.csv')
 write_csv(pni_celltypes, 'data/cpdb/pni_meta.csv')
 rm(pni_counts)
@@ -52,9 +52,9 @@ ji_counts <- mat %>%
   as.data.frame() %>%
   rownames_to_column(var = "Gene")
 ji_celltypes <- ji_metadata %>%
-  select(cell_id, celltype_level3)
-write_csv(ji_counts, 'data/cpdb/ji_counts.txt')
-write_tsv(ji_celltypes, 'data/cpdb/ji_meta.txt')
+  select(cell_id, celltype_level2)
+write_csv(ji_counts, 'data/cpdb/ji_counts.csv')
+write_csv(ji_celltypes, 'data/cpdb/ji_meta.csv')
 
 
 
