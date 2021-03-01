@@ -16,6 +16,16 @@ library(ggrepel)
 ## Helper Functions
 ##############################################
 
+make_ranks <- function(results) {
+  r <- results %>%
+    arrange(avg_log2FC) %>%
+    pull(avg_log2FC)
+  names(r) <- results %>%
+    arrange(avg_log2FC) %>%
+    pull(gene)
+  return(r)
+}
+
 run_fgsea <- function(gene_ranking) {
   require(fgsea)
   reactome <- gmtPathways(file.path("data", "genesets", "c2.cp.reactome.v7.2.symbols.gmt"))
@@ -86,6 +96,9 @@ print("Aftering excluding non-epithelial cells:")
 print(table(epi$orig.ident))
 
 epi <- epi %>%
+  NormalizeData() %>% # normally removed
+  FindVariableFeatures() %>% # normally removed
+  ScaleData(vars.to.regress = "percent.mt") %>% # normally removed
   RunPCA(npc = 30) %>%
   RunHarmony("condition", max.iter.harmony = 30) %>%
   RunUMAP(reduction = "harmony", dims = 1:30) %>%
@@ -112,7 +125,8 @@ top_markers <- epi.markers %>%
  
 ## We can now exclude pilosebaceous/eccrine clusters and proceed
 ## with KC analysis
-non_kc_clusters <- c(15, 17)
+# non_kc_clusters <- c(15, 17)
+non_kc_clusters <- c(18)
 kcs <- subset(epi, idents = non_kc_clusters, invert = T)
 
 rm(epi)
@@ -129,6 +143,9 @@ tsk_markers <- c("MMP10", "PTHLH", "FEZ1", "IL24", "KCNMA1",
                  "INHBA", "MAGEA4", "NT5E", "LAMC2", "SLITRK6")
 
 pni <- pni %>%
+  NormalizeData() %>% # normally removed
+  FindVariableFeatures() %>% # normally removed
+  ScaleData(vars.to.regress = "percent.mt") %>% # normally removed
   RunPCA(npc = 20) %>%
   RunHarmony("orig.ident", max.iter.harmony = 30) %>%
   RunUMAP(reduction = "harmony", dims = 1:20) %>%
@@ -147,16 +164,53 @@ top_pni_markers <- pni_markers %>%
   ungroup()
 
 
-## Cluster 3 is Unknown-1 and Cluster 5 is Unknown-2
+## 8 = Remaining pilosebaceous/eccrine cluster
+## 9 = Appear to be T cells that were improperly classified
+## Remove pilosebaceous/t cells and recluster
+pni_nonKC <- c(8, 9)
+pni <- subset(pni, idents = pni_nonKC, invert = T)
+
+pni <- pni %>%
+  NormalizeData() %>% # normally removed
+  FindVariableFeatures() %>% # normally removed
+  ScaleData(vars.to.regress = "percent.mt") %>% # normally removed
+  RunPCA(npc = 20) %>%
+  RunHarmony("orig.ident", max.iter.harmony = 30) %>%
+  RunUMAP(reduction = "harmony", dims = 1:20) %>%
+  FindNeighbors(reduction = "harmony")
+pni <- FindClusters(pni, resolution = .25)
+
+pni_umap <- DimPlot(pni, reduction = "umap", label = T, label.size = 8)
+print(pni_umap)
+
+pni_markers <- FindAllMarkers(pni, only.pos = TRUE, min.pct = 0.25, logfc.threshold = .5) %>%
+  filter(p_val_adj < .05)
+top_pni_markers <- pni_markers %>%
+  group_by(cluster) %>%
+  slice_max(avg_log2FC, n = 15) %>%
+  ungroup()
+
 pni_cluster_labels <- c(
-  "Basal",
-  "Differentiating",
-  "Cycling",
-  "Unknown-1",
-  "TSK",
-  "Unknown-2",
-  "Differentiating"
+  "KC_Diff",
+  "KC_Novel",
+  "KC_Cycling",
+  "KC_Basal",
+  "KC_Basal",
+  "KC_TSK",
+  "KC_Diff",
+  "KC_Unknown"
 )
+
+# ## Cluster 3 is Unknown-1 and Cluster 5 is Unknown-2
+# pni_cluster_labels <- c(
+#   "Basal",
+#   "Differentiating",
+#   "Cycling",
+#   "Unknown-1",
+#   "TSK",
+#   "Unknown-2",
+#   "Differentiating"
+# )
 
 pni_cluster2id <- tibble(
   cluster = factor(0:(length(pni_cluster_labels)-1)),
@@ -171,13 +225,17 @@ names(pni_cluster_labels) <- levels(pni)
 pni <- RenameIdents(pni, pni_cluster_labels)
 
 nonpni <- nonpni %>%
+  NormalizeData() %>%
+  FindVariableFeatures() %>%
+  ScaleData(vars.to.regress = "percent.mt") %>%
   RunPCA(npc = 20) %>%
   RunHarmony("orig.ident", max.iter.harmony = 30) %>%
   RunUMAP(reduction = "harmony", dims = 1:20) %>%
   FindNeighbors(reduction = "harmony")
-nonpni <- FindClusters(nonpni, resolution = .25)
+nonpni <- FindClusters(nonpni, resolution = .35)
 
 nonpni_umap <- DimPlot(nonpni, reduction = "umap", label = T, label.size = 8)
+print(nonpni_umap)
 nonpni_samples <- DimPlot(nonpni, reduction = "umap", group.by = "orig.ident")
 nonpni_plots <- nonpni_umap + nonpni_samples
 
@@ -189,15 +247,50 @@ top_nonpni_markers <- nonpni_markers %>%
   slice_max(avg_log2FC, n = 15) %>%
   ungroup()
 
-## Cluster 6 is the unknown non-PNI KC cluster
+## 7 - Appear to be Myeloid KC doublets
+## 10 - Outliers that don't cluster well and very few; also exclude
+nonpni_nonKC <- c(7, 10)
+nonpni <- subset(nonpni, idents = nonpni_nonKC, invert = T)
+
+nonpni <- nonpni %>%
+  NormalizeData() %>%
+  FindVariableFeatures() %>%
+  ScaleData(vars.to.regress = "percent.mt") %>%
+  RunPCA(npc = 20) %>%
+  RunHarmony("orig.ident", max.iter.harmony = 30) %>%
+  RunUMAP(reduction = "harmony", dims = 1:20) %>%
+  FindNeighbors(reduction = "harmony")
+nonpni <- FindClusters(nonpni, resolution = .25)
+
+nonpni_umap <- DimPlot(nonpni, reduction = "umap", label = T, label.size = 8)
+print(nonpni_umap)
+
+nonpni_markers <- FindAllMarkers(nonpni, only.pos = TRUE, min.pct = 0.25, logfc.threshold = .5) %>%
+  filter(p_val_adj < .05)
+top_nonpni_markers <- nonpni_markers %>%
+  group_by(cluster) %>%
+  slice_max(avg_log2FC, n = 15) %>%
+  ungroup()
+
+# ## Cluster 6 is the unknown non-PNI KC cluster
+# nonpni_cluster_labels <- c(
+#   "Differentiating",
+#   "Basal",
+#   "Cycling",
+#   "Differentiating",
+#   "Cycling",
+#   "TSK",
+#   "Unknown-3"
+# )
+
 nonpni_cluster_labels <- c(
-  "Differentiating",
-  "Basal",
-  "Cycling",
-  "Differentiating",
-  "Cycling",
-  "TSK",
-  "Unknown-3"
+  "KC_Diff",
+  "KC_Basal",
+  "KC_Cycling",
+  "KC_Diff",
+  "KC_Cycling",
+  "KC_TSK",
+  "KC_Diff"
 )
 
 nonpni_cluster2id <- tibble(
@@ -221,73 +314,84 @@ nonpni_umap <- DimPlot(nonpni, reduction = "umap", label = T, label.size = 8)
 kcs <- merge(nonpni, y = pni, merge.data = T)
 
 
-u1.markers <- FindMarkers(pni, ident.1 = "Unknown-1", logfc.threshold = .25) %>% 
+novel.markers <- FindMarkers(pni, ident.1 = "KC_Novel", logfc.threshold = .25) %>% 
   tibble::rownames_to_column(var = "gene") %>%
   filter(p_val_adj < .05) %>%
   arrange(avg_log2FC )
-u2.markers <- FindMarkers(pni, ident.1 = "Unknown-2", logfc.threshold = .25) %>% 
-  tibble::rownames_to_column(var = "gene") %>%
-  filter(p_val_adj < .05) %>%
-  arrange(avg_log2FC)
-u3.markers <- FindMarkers(nonpni, ident.1 = "Unknown-3", logfc.threshold = .25) %>% 
-  tibble::rownames_to_column(var = "gene") %>%
-  filter(p_val_adj < .05) %>%
-  arrange(avg_log2FC)
+# u2.markers <- FindMarkers(pni, ident.1 = "Unknown-2", logfc.threshold = .25) %>% 
+#   tibble::rownames_to_column(var = "gene") %>%
+#   filter(p_val_adj < .05) %>%
+#   arrange(avg_log2FC)
+# u3.markers <- FindMarkers(nonpni, ident.1 = "Unknown-3", logfc.threshold = .25) %>% 
+#   tibble::rownames_to_column(var = "gene") %>%
+#   filter(p_val_adj < .05) %>%
+#   arrange(avg_log2FC)
 
 
-u1_ranks <- u1.markers$avg_log2FC
-names(u1_ranks) <- u1.markers$gene
-u1_es <- run_fgsea(u1_ranks)
+novel_ranks <- novel.markers$avg_log2FC
+names(novel_ranks) <- novel.markers$gene
+novel_es <- run_fgsea(novel_ranks)
+novel_esplot <- plotES(novel_es)
+print(novel_esplot)
 
-u2_ranks <- u2.markers$avg_log2FC
-names(u2_ranks) <- u2.markers$gene
-u2_es <- run_fgsea(u2_ranks)
+# u2_ranks <- u2.markers$avg_log2FC
+# names(u2_ranks) <- u2.markers$gene
+# u2_es <- run_fgsea(u2_ranks)
+# 
+# u3_ranks <- u3.markers$avg_log2FC
+# names(u3_ranks) <- u3.markers$gene
+# u3_es <- run_fgsea(u3_ranks)
 
-u3_ranks <- u3.markers$avg_log2FC
-names(u3_ranks) <- u3.markers$gene
-u3_es <- run_fgsea(u3_ranks)
+# u1_esplot <- plotES(u1_es, n_terms = 6)
+# print(u1_esplot)
+# u2_esplot <- plotES(u2_es, n_terms = 6)
+# print(u2_esplot)
+# u3_esplot <- plotES(u3_es, n_terms = 6)
+# print(u3_esplot)
 
-u1_esplot <- plotES(u1_es, n_terms = 6)
-print(u1_esplot)
-u2_esplot <- plotES(u2_es, n_terms = 6)
-print(u2_esplot)
-u3_esplot <- plotES(u3_es, n_terms = 6)
-print(u3_esplot)
 
+kc_de <- FindMarkers(
+  kcs,
+  ident.1 = "pni",
+  ident.2 = "cSCC",
+  group.by = "condition",
+  logfc.threshold = .5
+  ) %>%
+  tibble::rownames_to_column(var = "gene")
 
 basal_de <- FindMarkers(
   kcs, ident.1 = "pni", 
   ident.2 = "cSCC",
-  subset.ident = "Basal",
+  subset.ident = "KC_Basal",
   group.by = "condition", 
-  logfc.threshold = .25) %>%
+  logfc.threshold = .5) %>%
   tibble::rownames_to_column(var = "gene") %>%
   mutate(subgroup = "Basal")
 
 cycling_de <- FindMarkers(
   kcs, ident.1 = "pni", 
   ident.2 = "cSCC",
-  subset.ident = "Cycling",
+  subset.ident = "KC_Cycling",
   group.by = "condition", 
-  logfc.threshold = .25) %>%
+  logfc.threshold = .5) %>%
   tibble::rownames_to_column(var = "gene") %>%
   mutate(subgroup = "Cycling")
 
 diff_de <- FindMarkers(
   kcs, ident.1 = "pni", 
   ident.2 = "cSCC",
-  subset.ident = "Differentiating",
+  subset.ident = "KC_Diff",
   group.by = "condition", 
-  logfc.threshold = .25) %>%
+  logfc.threshold = .5) %>%
   tibble::rownames_to_column(var = "gene") %>%
   mutate(subgroup = "Differentiating")
 
 tsk_de <- FindMarkers(
   kcs, ident.1 = "pni", 
   ident.2 = "cSCC",
-  subset.ident = "TSK",
+  subset.ident = "KC_TSK",
   group.by = "condition", 
-  logfc.threshold = .25) %>%
+  logfc.threshold = .5) %>%
   tibble::rownames_to_column(var = "gene") %>%
   mutate(subgroup = "TSK")
 
@@ -376,18 +480,24 @@ tsk_de %>%
   geom_point(aes(color = sig)) +
   geom_label_repel()
 
-## Save keratinocyte object for future use
-
+## Save keratinocyte objects for future use
 kc_outfp <- file.path(data_dir, "seurat", "harmony", "keratinocytes.rds")
+pni_outfp <- file.path(data_dir, "seurat", "harmony", "pni_kcs.rds")
+nonpni_outfp <- file.path(data_dir, "seurat", "harmony", "nonpni_kcs.rds")
 if (save_kcs) {
   saveRDS(kcs, kc_outfp)
+  saveRDS(pni, pni_outfp)
+  saveRDS(nonpni, nonpni_outfp)
 }
 
 ## Save markers genes for later viewing
 write_csv(pni_markers, "data/seurat/harmony/pni_markers.csv")
 write_csv(nonpni_markers, "data/seurat/harmony/nonpni_markers.csv")
+write_csv(novel.markers, "data/seurat/harmony/novel_signature.csv")
+write_csv(novel_es[, -"leadingEdge"], "data/seurat/harmony/novel_enrichment.csv")
 
 ## Save DE gene lists
+write_csv(kc_de, "data/seurat/harmony/kc_de_res.csv")
 write_csv(basal_de, "data/seurat/harmony/basal_de_res.csv")
 write_csv(cycling_de, "data/seurat/harmony/cycling_de_res.csv")
 write_csv(diff_de, "data/seurat/harmony/diff_de_res.csv")

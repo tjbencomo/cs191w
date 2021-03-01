@@ -11,9 +11,15 @@ infp <- file.path(data_dir, "harmony_pni.rds")
 
 cells <- readRDS(infp)
 cells@meta.data$celltype <- Idents(cells)
+cells@meta.data <- cells@meta.data %>%
+  mutate(celltype = as.character(celltype)) %>%
+  mutate(celltype = case_when(
+    celltype == "Pilosebaceous & Eccrine cells" ~ "Eccrine cells",
+    TRUE ~ celltype
+  ))
 
 ## Broad UMAP
-broad_umap <- DimPlot(cells, reduction = "umap", label = T, label.size = 6) + NoLegend()
+broad_umap <- DimPlot(cells, reduction = "umap") + NoLegend()
 
 
 ## Data Tables
@@ -23,8 +29,8 @@ cellsPerPatient <- cells@meta.data %>%
 
 celltype_counts <- cells@meta.data %>%
   count(celltype) %>%
-  rename(n_cells = n)
-  arrange(desc(n))
+  rename(n_cells = n) %>%
+  arrange(desc(n_cells))
 
 celltype_order <- celltype_counts %>%
   pull(celltype) %>%
@@ -49,7 +55,7 @@ celltype_comp_plot <- cells@meta.data %>%
   geom_col(aes(fill = orig.ident)) +
   theme_bw() + 
   labs(x = "", y = "") +
-  guides(fill=guide_legend(title="Patient"))
+  guides(fill=FALSE)
 
 ## Broad UMAP Infographic
 broad_info_plot <- celltype_comp_plot + celltype_count_plot +

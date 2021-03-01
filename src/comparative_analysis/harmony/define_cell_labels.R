@@ -59,7 +59,7 @@ metadata <- broad_metadata %>%
     celltype_level3 = cell_type
   ) %>%
   mutate(celltype_level2 = case_when(
-    celltype_level1 == "Epithelial cells" & is.na(celltype_level3) ~ "Pilosebaceous & Eccrine",
+    celltype_level1 == "Epithelial cells" & is.na(celltype_level3) ~ "Unknown",
     celltype_level1 == "Epithelial cells" & !is.na(celltype_level3) ~ "Keratinocytes",
     celltype_level1 == "T cells/NK cells" & celltype_level3 == "NK" ~ "NK cells",
     celltype_level1 %in% c("T cells/NK cells", "Myeloid cells") & celltype_level3 == "Doublets" ~ "Doublets",
@@ -74,7 +74,6 @@ metadata <- broad_metadata %>%
     !is.na(celltype_level3) ~ celltype_level3,
     TRUE ~ celltype_level2
   )) %>%
-  mutate(celltype_level3 = str_c(celltype_level2, celltype_level3, sep="_")) %>%
   mutate(isMultiplet = ifelse(celltype_level3 == "Doublets", 1, 0)) %>%
   select(-RNA_snn_res.0.6, -seurat_clusters.x, -seurat_clusters.y) %>%
   select(cell_id, orig.ident, nCount_RNA, nFeature_RNA, percent.mt, 
@@ -82,6 +81,7 @@ metadata <- broad_metadata %>%
          isMultiplet)
 
 
+write_csv(metadata, "data/combined_cell_metadata.csv")    
 
 
 
@@ -109,7 +109,6 @@ metadata <- broad_metadata %>%
 #          condition, celltype_level1, celltype_level2, celltype_level3, 
 #          isMultiplet)
 
-write_csv(metadata, "data/combined_cell_metadata.csv")    
   
   
   

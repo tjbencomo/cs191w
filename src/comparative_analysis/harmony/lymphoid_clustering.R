@@ -108,7 +108,7 @@ for(i in 1:length(cell_markers)) {
 cluster_labels <- c(
   "CD8+ T_EM",
   "CD4+ Exhausted",
-  "CD8+ Exhaused",
+  "CD8+ Exhausted",
   "CD8+ Naive",
   "CD4+ Pre-Exhausted",
   "NK",
