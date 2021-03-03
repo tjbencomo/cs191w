@@ -6,6 +6,9 @@ library(readr)
 library(stringr)
 library(harmony)
 
+MT_THRESH <- 10
+nGENE_THRESH <- 200
+
 data_dir <- file.path("data", "ji")
 data_dir <- "/scratch/users/tbencomo/cs191w/cellranger/ji"
 multiple_reps <- c("P1_cSCC", "P1_normal", "P3_cSCC", "P8_cSCC", "P8_normal")
@@ -35,7 +38,7 @@ for (i in 1:length(multiple_reps)) {
   # print(s2)
   s <- merge(s1, y = s2, project = multiple_reps[i])
   s[["percent.mt"]] <- PercentageFeatureSet(s, pattern = "^MT-")
-  s <- subset(s, nFeature_RNA > 200 & percent.mt < 10)
+  s <- subset(s, nFeature_RNA > nGENE_THRESH & percent.mt < MT_THRESH)
   if (str_detect(s@project.name, "normal")) {
     s <- AddMetaData(s, "normal", col.name = "condition")
   } else {
@@ -66,7 +69,7 @@ for (i in 1:length(samples)) {
       project = sname
     )
     s[["percent.mt"]] <- PercentageFeatureSet(s, pattern = "^MT-")
-    s <- subset(s, nFeature_RNA > 200 & percent.mt < 10)
+    s <- subset(s, nFeature_RNA > nGENE_THRESH & percent.mt < MT_THRESH)
     if (str_detect(s@project.name, "normal")) {
       s <- AddMetaData(s, "normal", col.name = "condition")
     } else {
@@ -100,7 +103,7 @@ for (i in 1:length(pni_samples)) {
     p <- CreateSeuratObject(counts = Read10X(data.dir = fp), project = sname)
     p <- AddMetaData(p, "pni", col.name = "condition")
     p[["percent.mt"]] <- PercentageFeatureSet(p, pattern = "^MT-")
-    p <- subset(p, nFeature_RNA > 200 & percent.mt < 10)
+    p <- subset(p, nFeature_RNA > nGENE_THRESH & percent.mt < MT_THRESH)
     pni_list[[i]] <- p
 }
 
