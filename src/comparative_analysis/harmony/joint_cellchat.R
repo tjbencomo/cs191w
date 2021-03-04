@@ -16,13 +16,15 @@ nonpni_fp <- file.path(data_dir, "cellchat_ji.rds")
 pni <- readRDS(pni_fp)
 nonpni <- readRDS(nonpni_fp)
 
-object.list <- list("cSCC" = nonpni, "PNI" = pni)
+object.list <- list("cSCC" = nonpni, "pSCC" = pni)
 
 cellchat <- mergeCellChat(object.list, add.names = names(object.list))
 rm(pni, nonpni)
 
-gg1 <- compareInteractions(cellchat, show.legend = F, group = c(1,2))
-gg2 <- compareInteractions(cellchat, show.legend = F, group = c(1,2), measure = "weight")
+gg1 <- compareInteractions(cellchat, show.legend = F, group = c(1,2)) + 
+  theme(text = element_text(size = 18))
+gg2 <- compareInteractions(cellchat, show.legend = F, group = c(1,2), measure = "weight") +
+  theme(text = element_text(size = 14))
 gg1 + gg2
 
 netVisual_diffInteraction(cellchat, weight.scale = T)
@@ -75,9 +77,27 @@ rankSimilarity(cellchat, type = "functional")
 # gg1 + gg2
 rankNet(cellchat, mode = "comparison", stacked = T, do.stat = TRUE, sources.use = "KC", return.data = T) -> x
 rankNet(cellchat, mode = "comparison", stacked = T, do.stat = TRUE, cutoff.pvalue = 1e-3)
-rankNet(cellchat, mode = "comparison", stacked = T, do.stat = TRUE, thresh = 1e-3)
+rankNet(cellchat, mode = "comparison", stacked = T, do.stat = TRUE, thresh = 1e-6, cutoff.pvalue = 1e-6)
 rankNet(cellchat, mode = "comparison", stacked = T, do.stat = TRUE, 
-        sources.use = "KC", return.data = T)
+        sources.use = "KC")
+
+
+df <- rankNet(cellchat, mode = "comparison", stacked = T, 
+              do.stat = TRUE, sources.use = "KC", 
+              return.data = T)[["signaling.contribution"]]
+df %>% 
+  filter(pvalues < 1e-4) %>% 
+  ggplot(aes(name, contribution.scaled, fill=group)) + 
+  geom_bar(stat = 'identity', position = 'fill') + 
+  theme_classic() + 
+  labs(x = "", y = "Relative Information Flow") +
+  guides(fill = guide_legend(title = "")) +
+  coord_flip() + 
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "grey50", size = 0.5) +
+  theme(text = element_text(size = 18))
+
+
+
 
 i = 1
 # combining all the identified signaling pathways from different datasets 
@@ -96,7 +116,7 @@ gg1
 
 
 
-pathways.show <- c("GDNF")
+pathways.show <- c("CLEC")
 weight.max <- getMaxWeight(object.list, slot.name = c("netP"), attribute = pathways.show) # control the edge weights across different datasets
 par(mfrow = c(1,2), xpd=TRUE)
 for (i in 1:length(object.list)) {

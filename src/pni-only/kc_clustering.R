@@ -33,16 +33,19 @@ kcs <- subset(cells, idents = "Keratinocytes")
 rm(cells)
 
 kcs <- kcs %>%
+  NormalizeData() %>%
+  FindVariableFeatures() %>%
+  ScaleData(vars.to.regress = "percent.mt") %>%
   RunPCA(npc = 30) %>%
   RunHarmony("orig.ident", max.iter.harmony = 20) %>%
   RunUMAP(reduction = "harmony", dims = 1:30) %>%
   FindNeighbors(reduction = "harmony")
-kcs <- FindClusters(kcs, resolution = .35)
+kcs <- FindClusters(kcs, resolution = .4)
 
 kc_umap <- DimPlot(kcs, reduction = "umap", label = T, label.size = 6)
 print(kc_umap)
 
-markers <- FindAllMarkers(kcs, only.pos = TRUE, min.pct = 0.25, logfc.threshold = .25)
+markers <- FindAllMarkers(kcs, only.pos = TRUE, min.pct = 0.25, logfc.threshold = .5)
 top_markers <- markers %>%
   group_by(cluster) %>%
   slice_max(avg_log2FC, n = 15) %>%
@@ -65,17 +68,44 @@ for(i in 1:length(celltype_markers)) {
   print(check_clusters(markers, celltype_markers[[i]]))
 }
 
+clusters2remove <- c(7, 10, 12)
+kcs <- subset(kcs, idents = clusters2remove, invert = T)
+
+kcs <- kcs %>%
+  NormalizeData() %>%
+  FindVariableFeatures() %>%
+  ScaleData(vars.to.regress = "percent.mt") %>%
+  RunPCA(npc = 30) %>%
+  RunHarmony("orig.ident", max.iter.harmony = 20) %>%
+  RunUMAP(reduction = "harmony", dims = 1:30) %>%
+  FindNeighbors(reduction = "harmony")
+kcs <- FindClusters(kcs, resolution = .4)
+
+kc_umap <- DimPlot(kcs, reduction = "umap", label = T, label.size = 6)
+print(kc_umap)
+
+markers <- FindAllMarkers(kcs, only.pos = TRUE, min.pct = 0.25, logfc.threshold = .25)
+top_markers <- markers %>%
+  group_by(cluster) %>%
+  slice_max(avg_log2FC, n = 15) %>%
+  ungroup()
+
+for(i in 1:length(celltype_markers)) {
+  print(names(celltype_markers)[i])
+  print(check_clusters(markers, celltype_markers[[i]]))
+}
+
 ## Labels
-cluster_labels <- c(
-  "Basal",
-  "Differentiating",
-  "U1",
-  "Cycling",
-  "Cycling",
-  "Immune cells",
-  "TSK",
-  "Basal",
-  "U2",
-  "Differentiating",
-  "TSK"
-)
+# cluster_labels <- c(
+#   "Basal",
+#   "Differentiating",
+#   "U1",
+#   "Cycling",
+#   "Cycling",
+#   "Immune cells",
+#   "TSK",
+#   "Basal",
+#   "U2",
+#   "Differentiating",
+#   "TSK"
+# )

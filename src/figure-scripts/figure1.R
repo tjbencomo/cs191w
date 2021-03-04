@@ -42,7 +42,7 @@ celltype_count_plot <- celltype_counts %>%
   ggplot(aes(n_cells, celltype)) +
   geom_col() +
   theme_bw() +
-  labs(x = "", y = "") +
+  labs(x = "Number of cells", y = "") +
   theme(axis.text.y = element_blank())
 
 ## Cell Type Composition By Patient
@@ -54,12 +54,13 @@ celltype_comp_plot <- cells@meta.data %>%
   ggplot(aes(prop, celltype)) +
   geom_col(aes(fill = orig.ident)) +
   theme_bw() + 
-  labs(x = "", y = "") +
+  labs(x = "Proportion of cells", y = "") +
   guides(fill=FALSE)
 
 ## Broad UMAP Infographic
 broad_info_plot <- celltype_comp_plot + celltype_count_plot +
   plot_layout(guides = "collect")
+print(broad_info_plot)
 
 ## Percent Celltypes Per Patient
 patient_order <- rev(c("LEE01", "LEE02", "LEE03", "LEE04"))
@@ -86,7 +87,7 @@ patient_nFeature_plot <- cells@meta.data %>%
   ggplot(aes(orig.ident, nFeature_RNA)) +
   geom_violin(aes(fill = orig.ident)) +
   theme_bw() +
-  labs(x = "", y = "Number of genes detected") +
+  labs(x = "", y = "Number of Genes ") +
   guides(fill=FALSE)
 
 ## Number of Reads Per Sample
@@ -108,3 +109,8 @@ patient_mt_plot <- cells@meta.data %>%
 ## QC Metrics
 qc_plot <- patient_cellcount_plot + patient_nFeature_plot + 
   patient_nCount_plot + patient_mt_plot
+
+final_plot <- ((qc_plot + plot_layout(ncol = 4)) / (broad_umap | broad_info_plot)) +  
+  plot_layout(widths = c(1, 1), heights = c(1, 2))
+print(final_plot)
+ggsave("figures/report/figure1.eps", final_plot, width = 10, height = 6, units = "in")

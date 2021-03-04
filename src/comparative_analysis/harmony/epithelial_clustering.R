@@ -178,7 +178,7 @@ pni <- pni %>%
   RunHarmony("orig.ident", max.iter.harmony = 30) %>%
   RunUMAP(reduction = "harmony", dims = 1:20) %>%
   FindNeighbors(reduction = "harmony")
-pni <- FindClusters(pni, resolution = .25)
+pni <- FindClusters(pni, resolution = .35)
 
 pni_umap <- DimPlot(pni, reduction = "umap", label = T, label.size = 8)
 print(pni_umap)
@@ -488,18 +488,20 @@ if (save_kcs) {
   saveRDS(kcs, kc_outfp)
   saveRDS(pni, pni_outfp)
   saveRDS(nonpni, nonpni_outfp)
+  
+  ## Save markers genes for later viewing
+  write_csv(pni_markers, "data/seurat/harmony/pni_markers.csv")
+  write_csv(nonpni_markers, "data/seurat/harmony/nonpni_markers.csv")
+  write_csv(novel.markers, "data/seurat/harmony/novel_signature.csv")
+  write_csv(novel_es[, -"leadingEdge"], "data/seurat/harmony/novel_enrichment.csv")
+  
+  ## Save DE gene lists
+  write_csv(kc_de, "data/seurat/harmony/kc_de_res.csv")
+  write_csv(basal_de, "data/seurat/harmony/basal_de_res.csv")
+  write_csv(cycling_de, "data/seurat/harmony/cycling_de_res.csv")
+  write_csv(diff_de, "data/seurat/harmony/diff_de_res.csv")
+  write_csv(tsk_de, "data/seurat/harmony/tsk_de_res.csv")
 }
 
-## Save markers genes for later viewing
-write_csv(pni_markers, "data/seurat/harmony/pni_markers.csv")
-write_csv(nonpni_markers, "data/seurat/harmony/nonpni_markers.csv")
-write_csv(novel.markers, "data/seurat/harmony/novel_signature.csv")
-write_csv(novel_es[, -"leadingEdge"], "data/seurat/harmony/novel_enrichment.csv")
 
-## Save DE gene lists
-write_csv(kc_de, "data/seurat/harmony/kc_de_res.csv")
-write_csv(basal_de, "data/seurat/harmony/basal_de_res.csv")
-write_csv(cycling_de, "data/seurat/harmony/cycling_de_res.csv")
-write_csv(diff_de, "data/seurat/harmony/diff_de_res.csv")
-write_csv(tsk_de, "data/seurat/harmony/tsk_de_res.csv")
 
