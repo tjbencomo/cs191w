@@ -25,8 +25,14 @@ check_clusters <- function(cluster_markers, celltype_markers) {
 ## Analysis Code
 #######################################
 
+save_results <- TRUE
 data_dir <- "data"
 infp <- file.path(data_dir, "seurat", "pni-only", "harmony_pni.rds")
+outfp <- file.path(data_dir, "seurat", "pni-only", "keratinocytes.rds")
+met_fp <- file.path(data_dir, "seurat", "pni-only", "keratinocyte_metadata.csv")
+markers_fp <- file.path(data_dir, "seurat", "pni-only", "keratinocyte_markers.csv")
+top_markers_fp <- file.path(data_dir, "seurat", "pni-only", "keratinocyte_top_markers.csv")
+
   
 cells <- readRDS(infp)
 kcs <- subset(cells, idents = "Keratinocytes")
@@ -69,7 +75,9 @@ for(i in 1:length(celltype_markers)) {
 }
 
 clusters2remove <- c(7, 10, 12)
+not_kcs <- subset(kcs, idents = clusters2remove)
 kcs <- subset(kcs, idents = clusters2remove, invert = T)
+
 
 kcs <- kcs %>%
   NormalizeData() %>%
@@ -79,7 +87,7 @@ kcs <- kcs %>%
   RunHarmony("orig.ident", max.iter.harmony = 20) %>%
   RunUMAP(reduction = "harmony", dims = 1:30) %>%
   FindNeighbors(reduction = "harmony")
-kcs <- FindClusters(kcs, resolution = .4)
+kcs <- FindClusters(kcs, resolution = .4) #real = .4
 
 kc_umap <- DimPlot(kcs, reduction = "umap", label = T, label.size = 6)
 print(kc_umap)
@@ -95,17 +103,59 @@ for(i in 1:length(celltype_markers)) {
   print(check_clusters(markers, celltype_markers[[i]]))
 }
 
-## Labels
-# cluster_labels <- c(
-#   "Basal",
-#   "Differentiating",
-#   "U1",
-#   "Cycling",
-#   "Cycling",
-#   "Immune cells",
-#   "TSK",
-#   "Basal",
-#   "U2",
-#   "Differentiating",
-#   "TSK"
-# )
+cluster_labels <- c(
+  "Basal-1",
+  "Novel-1",
+  "TSK",
+  "Cycling",
+  "Novel-2",
+  "Differentiating",
+  "Differentiating",
+  "Cycling",
+  "Novel-2",
+  "Basal-2"
+)
+
+names(cluster_labels) <- levels(kcs)
+kcs <- RenameIdents(kcs, cluster_labels)
+
+clusterid2label <- tibble(
+  cluster = factor(0:(length(unique(kcs$seurat_clusters))-1)),
+  label = cluster_labels
+)
+
+markers <- markers %>%
+  left_join(clusterid2label)
+top_markers <- top_markers %>%
+  left_join(clusterid2label)
+
+## Merge metadata for later celltype labeling
+notKCMet <- not_kcs@meta.data
+kcMet <- kcs@meta.data
+
+notKCMet <- notKCMet %>%
+  mutate(label = case_when(
+    seurat_clusters == 7 ~ "T cell",
+    seurat_clusters == 10 ~ "Immune cell",
+    seurat_clusters == 12 ~ "Endothelial cell"
+  )) %>%
+  mutate(good_label = 0)
+kcMet <- kcMet %>%
+  mutate(label = Idents(kcs)) %>%
+  mutate(good_label = 1)
+
+met <- kcMet %>%
+  bind_rows(notKCMet) %>%
+  tibble::rownames_to_column(var = "cell_id")
+
+## Save results
+if (save_results) {
+  saveRDS(kcs, outfp)
+  write_csv(met, met_fp)
+  write_csv(markers, markers_fp)
+  write_csv(top_markers, top_markers_fp)
+}
+
+
+
+
