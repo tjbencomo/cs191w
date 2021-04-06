@@ -109,7 +109,7 @@ pni_umap <- umapdf %>%
   scale_color_manual(values = c(basal_red, cycling_yellow, diff_green, tsk_blue, immune_pink)) +
   ggtitle("PNI Keratinocytes") +
   guides(color = guide_legend(title = "")) +
-  theme(text = element_text(size = 16))
+  theme(text = element_text(size = 12))
 
 nonpni_umap <- umapdf %>%
   filter(dataset == "No PNI") %>%
@@ -120,12 +120,12 @@ nonpni_umap <- umapdf %>%
   scale_color_manual(values = c(basal_red, cycling_yellow, diff_green, tsk_blue)) +
   ggtitle("Non-PNI Keratinocytes") +
   guides(color = FALSE) +
-  theme(text = element_text(size = 16))
+  theme(text = element_text(size = 12))
 
-topFig <- (nonpni_umap | pni_umap) + plot_layout(guides = "collect")
+# topFig <- (nonpni_umap | pni_umap) + plot_layout(guides = "collect")
 
 
-## MIDDLE FIGURE
+
 ## Plot composition of keratinocyte populations
 ## in each dataset
 kc_comp_plot <- umapdf %>%
@@ -151,11 +151,16 @@ kc_comp_plot <- umapdf %>%
   theme(text = element_text(size = 16))
 print(kc_comp_plot)
 
+topFig <- (nonpni_umap | pni_umap | kc_comp_plot) + plot_layout(guides = "collect")
+
+## MIDDLE FIGURE
+## Marker gene expression
 iek_markers <- c("IGHG1", "IGHA1", "IGLC2", "C1orf56")
 x <- plot_density(pni, iek_markers, combine = FALSE)
 marker_plot <- (x[[1]] + guides(color = FALSE) | x[[2]] + guides(color = FALSE)) / 
   (x[[3]] + guides(color = FALSE) | x[[4]]) + plot_layout(guides = "collect")
-middleFig <- (kc_comp_plot | marker_plot) + plot_layout(width = c(1, 3))
+# middleFig <- (kc_comp_plot | marker_plot) + plot_layout(width = c(1, 3))
+middleFig <- marker_plot
 
 
 ## BOTTOM FIGURE
