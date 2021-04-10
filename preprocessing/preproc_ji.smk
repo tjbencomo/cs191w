@@ -2,12 +2,19 @@ import os
 import pandas as pd
 
 
-output_dir = '/scratch/users/tbencomo/cs191w'
+#output_dir = '/scratch/users/tbencomo/cs191w'
+bam2fqOutDir = '/scratch/groups/carilee/cs191w/data/ji-fqs'
 bam_dir = '/scratch/users/tbencomo/cs191w/data/ji'
 metadata_fp = '/home/users/tbencomo/cs191w/data/ji_metadata.csv'
+output_dir = '/scratch/groups/carilee/cs191w/preprocessing-fixed'
+#bam_dir = '/scratch/groups/carilee/cs191w/data/ji-normals'
+#metadata_fp = '/scratch/groups/carilee/cs191w/data/ji_metadata.csv'
 samples = pd.read_csv(metadata_fp)
 samples['bamfile'] = bam_dir + '/' + samples['bamfile']
 samples['sample_id'] = samples['patient'] + '_' + samples['condition'] + '_' + samples['replicate'].astype(str)
+
+#samples = samples.query("condition == 'normal'")
+#samples = samples.query("patient != 'P9'")
 
 ref_dir = '/home/groups/carilee/refs/scRNAseq/refdata-gex-GRCh38-2020-A'
 
@@ -32,12 +39,12 @@ def get_input(wildcards):
 
 rule targets:
     input:
-        expand(os.path.join(bam_dir, "fqs","{sample_id}"), sample_id=samples['sample_id']),
+        expand(os.path.join(bam2fqOutDir, "fqs","{sample_id}"), sample_id=samples['sample_id']),
         expand(os.path.join(output_dir, "cellranger", "ji", "{sample_id}"), sample_id = samples['sample_id'])
 
 rule cellranger_count:
     input:
-        os.path.join(bam_dir, "fqs", "{sample_id}")
+        os.path.join(bam2fqOutDir, "fqs", "{sample_id}")
         #get_input
     output:
         outdir=directory(os.path.join(output_dir, "cellranger" , "ji", "{sample_id}"))
@@ -61,10 +68,10 @@ rule bam2fastq:
     input:
         get_bam
     output:
-        directory(os.path.join(bam_dir, "fqs", "{sample_id}"))
+        directory(os.path.join(bam2fqOutDir, "fqs", "{sample_id}"))
     threads: 8
     shell:
         """
-        bamtofastq-1.3.2 --nthreads {threads} {input} {output}
+        bamtofastq-1.3.2 --nthreads {threads} {input} {output} --reads-per-fastq=99999999999999999
         """
 

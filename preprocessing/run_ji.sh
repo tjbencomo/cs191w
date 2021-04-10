@@ -11,7 +11,7 @@
 
 
 set -e
-cd /home/users/tbencomo/cs191w/preprocessing
+cd /scratch/groups/carilee/cs191w/preprocessing
 snakemake -s preproc_ji.smk targets --cluster-config cluster.json -j 499 \
     --use-conda --use-singularity \
     --cluster 'sbatch -p {cluster.partition} -t {cluster.time} --mem {cluster.mem} -c {cluster.ncpus} -o {cluster.out}'

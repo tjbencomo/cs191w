@@ -50,6 +50,11 @@ snakemake -s preprocessing/Snakefile targets
 ```
 
 ## Analysis
+The following folders contain relevant analysis code. Each file has documentation
+describing the purpose of that script.
 
+* `src/comparative_analysis/` - scripts performing joint analysis on Ji's data with our own samples. The `harmony` folder contains analysis code
+* `src/pni-only` - scripts only analyzing the PNI samples without Ji's data
+* `src/figure-scripts` - scripts to generate figures for final report
 
 
