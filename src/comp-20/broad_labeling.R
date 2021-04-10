@@ -41,7 +41,7 @@ cluster_labels <- c(
   "Epithelial cells",
   "Mast cells",
   "T/NK cells",
-  "B cells",
+  "B & Plasma cells",
   "Epithelial cells",
   "Epithelial cells"
 )
