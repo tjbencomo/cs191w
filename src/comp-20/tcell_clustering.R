@@ -125,7 +125,7 @@ VlnPlot(ji, c("KIR2DL4", "TRAC")) #lack of TRAC = NK cells
 ## 3 - NK cells
 ## 4 - Cycling and T reg
 ## 5 - CD8+ - similar to cluster-0
-## 6 - CD8+ - similar to cluster-0
+## 6 - CD4+
 
 
 #######################################
@@ -155,9 +155,10 @@ pniMet <- pni@meta.data %>%
   select(-starts_with("RNA"))
 jiMet <- ji@meta.data %>%
   mutate(TCell_Label = case_when(
-    seurat_clusters %in% c(0, 2, 5, 6) ~ "CD8+",
+    seurat_clusters %in% c(0, 2, 5) ~ "CD8+",
     seurat_clusters %in% c(1, 4) ~ "T Reg",
-    seurat_clusters == 3 ~ "NK"
+    seurat_clusters == 3 ~ "NK",
+    seurat_clusters == 6 ~ "CD4+"
   )) %>%
   mutate(keep = "Yes") %>%
   select(-starts_with("RNA"))
