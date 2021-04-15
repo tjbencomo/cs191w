@@ -2,7 +2,10 @@
 # Description: Perform crosstalk analysis on Ji's single cell data
 
 library(Seurat)
+library(readr)
+library(dplyr)
 library(CellChat)
+
 
 data_dir <- file.path("data", "seurat", "harmony-20")
 cells_fp <- file.path(data_dir, "harmony_combined.rds")

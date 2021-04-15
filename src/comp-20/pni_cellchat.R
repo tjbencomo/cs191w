@@ -2,6 +2,8 @@
 # Description: Perform crosstalk analysis on PNI single cell data
 
 library(Seurat)
+library(readr)
+library(dplyr)
 library(CellChat)
 
 data_dir <- file.path("data", "seurat", "harmony-20")
