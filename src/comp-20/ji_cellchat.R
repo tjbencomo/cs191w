@@ -26,7 +26,8 @@ metadata <- metadata %>%
     Cell_Type == "Fibroblasts" ~ "Fibro",
     Cell_Type == "Mast cells" ~ "Mast",
     Cell_Type == "B & Plasma cells" ~ "B & Plasma",
-    TRUE ~ Subpopulation_Label
+    Cell_Type == "Epithelial cells" ~ Subpopulation_Label,
+    TRUE ~ Cell_Type
   ))
 
 cells$keep <- rownames(cells@meta.data) %in% metadata$cell_id

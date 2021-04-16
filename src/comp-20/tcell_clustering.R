@@ -149,7 +149,7 @@ pniMet <- pni@meta.data %>%
     seurat_clusters %in% c(0, 1, 6, 7) ~ "CD8+",
     seurat_clusters == 3 ~ "CD4+",
     seurat_clusters == 4 ~ "T Reg",
-    seurat_clusters == 7 ~ "NK"
+    seurat_clusters == 5 ~ "NK"
   )) %>%
   mutate(keep = "Yes") %>%
   select(-starts_with("RNA"))

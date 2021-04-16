@@ -14,7 +14,6 @@ outfp <- file.path(data_dir, "cellchat_pni.rds")
 cells <- readRDS(cells_fp)
 metadata <- read_csv(metadata_fp)
 
-
 ## Collapse fibro/endo subcategories
 cells2remove <- c("Pilosebaceous/Eccrine cell", "Melanocyte")
 metadata <- metadata %>%
@@ -25,7 +24,8 @@ metadata <- metadata %>%
     Cell_Type == "Fibroblasts" ~ "Fibro",
     Cell_Type == "Mast cells" ~ "Mast",
     Cell_Type == "B & Plasma cells" ~ "B & Plasma",
-    TRUE ~ Subpopulation_Label
+    Cell_Type == "Epithelial cells" ~ Subpopulation_Label,
+    TRUE ~ Cell_Type
   ))
 
 cells$keep <- rownames(cells@meta.data) %in% metadata$cell_id
