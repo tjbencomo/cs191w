@@ -26,7 +26,7 @@ metadata <- metadata %>%
     Cell_Type == "B & Plasma cells" ~ "B & Plasma",
     Cell_Type == "Myeloid cells" ~ "Myeloid",
     Cell_Type == "T/NK cells" ~ "T/NK",
-    Cell_Type == "Epithelial cells" ~ Subpopulation_Label,
+    Cell_Type == "Epithelial cells" ~ "KC",
     TRUE ~ Cell_Type
   ))
 
