@@ -17,7 +17,7 @@ metadata <- read_csv(metadata_fp)
 ## Collapse fibro/endo subcategories
 cells2remove <- c("Pilosebaceous/Eccrine cell", "Melanocyte")
 metadata <- metadata %>%
-  filter(keep == "Yes", condition == "cSCC") %>%
+  filter(keep == "Yes", condition == "pni") %>%
   filter(!(Subpopulation_Label %in% cells2remove)) %>%
   mutate(Final_Label = case_when(
     Cell_Type == "Endothelial cells" ~ "Endo",
@@ -29,19 +29,6 @@ metadata <- metadata %>%
     Cell_Type == "Epithelial cells" ~ Subpopulation_Label,
     TRUE ~ Cell_Type
   ))
-# metadata <- metadata %>%
-#   filter(keep == "Yes", condition == "pni") %>%
-#   filter(!(Subpopulation_Label %in% cells2remove)) %>%
-#   mutate(Final_Label = case_when(
-#     Cell_Type == "Endothelial cells" ~ "Endo",
-#     Cell_Type == "Fibroblasts" ~ "Fibro",
-#     Cell_Type == "Mast cells" ~ "Mast",
-#     Cell_Type == "B & Plasma cells" ~ "B & Plasma",
-#     Cell_Type == "Myeloid cells" ~ "Myeloid",
-#     Cell_Type == "T/NK cells" ~ "T/NK",
-#     Cell_Type == "Epithelial cells" ~ "KC",
-#     TRUE ~ Cell_Type
-#   ))
 
 cells$keep <- rownames(cells@meta.data) %in% metadata$cell_id
 pni <- subset(cells, keep == 1)
