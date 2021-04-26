@@ -55,7 +55,7 @@ cellchat <- projectData(cellchat, PPI.human)
 
 print("Computing communication probabilities")
 cellchat <- computeCommunProb(cellchat)
-cellchat <- filterCommunication(cellchat, min.cells = 10)
+cellchat <- filterCommunication(cellchat, min.cells = 30)
 
 df.net <- subsetCommunication(cellchat)
 df.net.pathways <- subsetCommunication(cellchat, slot.name = "netP")
